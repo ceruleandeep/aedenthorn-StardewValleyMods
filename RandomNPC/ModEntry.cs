@@ -38,14 +38,38 @@ namespace RandomNPC
         private ModData RNPCsavedNPCs { get; set; }
 
         private List<RNPCSchedule> RNPCSchedules = new();
-        private int RNPCMaxVisitors { get; set; }
 
+        internal static IManifest _manifest;
+        
         private bool droveOff;
         private List<RNPC> RNPCs = new();
         private bool drivingOff;
         private readonly string[] SDVNPCS = { "Alex", "Elliott", "Harvey", "Sam", "Sebastian", "Shane", "Abigail", "Emily", "Haley", "Leah", "Maru", "Penny", "Caroline", "Clint", "Demetrius", "Evelyn", "George", "Gus", "Jas", "Jodi", "Krobus", "Lewis", "Linus", "Marnie", "Pam", "Pierre", "Robin", "Sandy", "Vincent", "Willy", "Gunther", "Marlon" };
 
+        internal static int MaxVisitors
+        {
+            get
+            {
+                var ConfiguredMaxVisitors = Math.Min(24, Math.Min(Config.RNPCTotal, Config.RNPCMaxVisitors));
+                if (!Context.IsWorldReady) return ConfiguredMaxVisitors;
 
+                int visitorsFromModdata;
+                try
+                {
+                    Game1.getFarm().modData.TryGetValue($"{_manifest.UniqueID}/Visitors", out var visitors);
+                    visitorsFromModdata = int.Parse(visitors);
+                }
+                catch
+                {
+                    visitorsFromModdata = -1;
+                }
+
+                visitorsFromModdata = Math.Min(24, visitorsFromModdata);
+                var v = visitorsFromModdata >= 0 ? visitorsFromModdata : ConfiguredMaxVisitors;
+                
+                return v;
+            }
+        }
 
         /*********
         ** Public methods
@@ -54,8 +78,9 @@ namespace RandomNPC
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            Config = this.Helper.ReadConfig<ModConfig>();
-
+            Config = Helper.ReadConfig<ModConfig>();
+            _manifest = ModManifest;
+            
             RNPCdialogueData = Helper.Data.ReadJsonFile<DialogueData>("assets/dialogue.json") ?? new DialogueData();
             RNPCengagementDialogueStrings = Helper.Data.ReadJsonFile<ModData>("assets/engagement_dialogues.json") ?? new ModData();
             RNPCgiftDialogueStrings = Helper.Data.ReadJsonFile<ModData>("assets/gift_dialogues.json") ?? new ModData();
@@ -75,9 +100,7 @@ namespace RandomNPC
             RNPCexoticHairColours = Helper.Data.ReadJsonFile<ModData>("assets/exotic_hair_sets.json") ?? new ModData();
 
             RNPCclothes = Helper.Data.ReadJsonFile<ModData>("assets/clothes.json") ?? new ModData();
-
-            RNPCMaxVisitors = Math.Min(24, Math.Min(Config.RNPCTotal, Config.RNPCMaxVisitors));
-
+            
             RNPCsavedNPCs = Helper.Data.ReadJsonFile<ModData>("saved_npcs.json") ?? new ModData();
             while (RNPCsavedNPCs.data.Count < Config.RNPCTotal)
             {
@@ -94,13 +117,11 @@ namespace RandomNPC
             }
 
             // shuffle for visitors
-
             RNPCs = RNPCs.OrderBy(_ => Guid.NewGuid()).ToList();
-
             for (int i = 0; i < RNPCs.Count; i++)
             {
-                //RNPCs[i].startLoc = "BusStop " + (13 + (i % 6)) + " " + (11 + i / 6);
-                RNPCs[i].visiting = i < RNPCMaxVisitors;
+                // RNPCs[i].startLoc = "BusStop " + (13 + i % 6) + " " + (11 + i / 6);
+                RNPCs[i].visiting = i < MaxVisitors;
             }
 
             helper.Events.GameLoop.ReturnedToTitle += ReturnedToTitle;
@@ -221,7 +242,7 @@ namespace RandomNPC
 
                 if ((int)npc.getTileLocation().X != 12 || (int)npc.getTileLocation().Y != 9) continue;
                 
-                // ! what is this doing?
+                // make sure the NPC is one of ours
                 foreach (var unused in RNPCs.Where(rnpc => npc.Name.Equals(rnpc.nameID)))
                 {
                     Game1.warpCharacter(npc, "BusStop", new Vector2(10000, 10000));
@@ -286,7 +307,7 @@ namespace RandomNPC
             for (int i = 0; i < RNPCs.Count; i++)
             {
                 //RNPCs[i].startLoc = "BusStop " + (13 + (i % 6)) + " " + (11 + i / 6);
-                RNPCs[i].visiting = i < RNPCMaxVisitors;
+                RNPCs[i].visiting = i < MaxVisitors;
                 Helper.GameContent.InvalidateCache("Characters/schedules/" + RNPCs[i].nameID);
             }
             Helper.GameContent.InvalidateCache("Data/NPCDispositions");

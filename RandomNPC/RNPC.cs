@@ -58,9 +58,9 @@
 
         internal string MakeDisposition(int idx)
         {
-            if(idx < ModEntry.Config.RNPCMaxVisitors)
+            if (idx < ModEntry.MaxVisitors)
             {
-                startLoc = "BusStop " + (13 + (idx % 6)) + " " + (11 + idx / 6);
+                startLoc = "BusStop " + (13 + idx % 6) + " " + (11 + idx / 6);
                 visiting = true;
             }
             else
