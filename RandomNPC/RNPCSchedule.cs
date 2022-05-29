@@ -1,6 +1,5 @@
 ﻿using StardewValley;
 using System;
-using System.Threading;
 
 namespace RandomNPC
 {
@@ -10,10 +9,10 @@ namespace RandomNPC
         public string afternoonLoc;
         public string morningEarliest;
         public string afternoonEarliest;
-        public string mTime;
-        public string aTime;
-        public RNPC npc;
-        public int startM;
+        private string mTime;
+        private string aTime;
+        public readonly RNPC npc;
+        private int startM;
 
         public RNPCSchedule(RNPC npc)
         {
@@ -25,12 +24,11 @@ namespace RandomNPC
         public string MakeString()
         {
             string str = "";
-            int mHour;
             int mH;
             int mM;
             if(morningEarliest != "any")
             {
-                mHour = int.Parse(morningEarliest.Substring(0,morningEarliest.Length == 4?2:1));
+                var mHour = int.Parse(morningEarliest.Substring(0,morningEarliest.Length == 4?2:1));
                 mM = (int.Parse(morningEarliest) % 100) / 10;
                 mH = Game1.random.Next(mHour, Math.Max(7, Math.Min(mHour,9)));
                 mM = Game1.random.Next(mH == mHour?mM:0, 5);
@@ -40,24 +38,23 @@ namespace RandomNPC
                 mH = Game1.random.Next(7, 9);
                 mM = Game1.random.Next(0, 5);
             }
-            this.mTime = mH.ToString() + mM.ToString() + "0";
+            mTime = mH.ToString() + mM + "0";
 
             int aH;
-            int aHour;
             int aM;
             if(afternoonEarliest != "any" && int.Parse(afternoonEarliest) > 1200)
             {
-                aHour = (int)Math.Round((double)(double.Parse(afternoonEarliest)/100));
-                aM = (int.Parse(afternoonEarliest) % 100) / 10;
+                var aHour = (int)Math.Round(double.Parse(afternoonEarliest)/100);
+                aM = int.Parse(afternoonEarliest) % 100 / 10;
                 aH = Game1.random.Next(aHour, Math.Min(aHour, 16));
-                aM = Game1.random.Next((aH == aHour?aM:0), 5);
+                aM = Game1.random.Next(aH == aHour?aM:0, 5);
             }
             else
             {
                 aH = Game1.random.Next(12, 16);
                 aM = Game1.random.Next(0, 5);
             }
-            this.aTime = aH.ToString() + aM.ToString() + "0";
+            aTime = aH.ToString() + aM + "0";
 
             // create starting location to go to
 
@@ -70,14 +67,7 @@ namespace RandomNPC
             }
             else if (startY < 68)
             {
-                if (startX < 30)
-                {
-                    startFace = 1;
-                }
-                else
-                {
-                    startFace = 3;
-                }
+                startFace = startX < 30 ? 1 : 3;
             }
 
             startM = Game1.random.Next(1, 5);

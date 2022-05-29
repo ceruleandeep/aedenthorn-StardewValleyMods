@@ -4,6 +4,6 @@ namespace RandomNPC
 {
     internal class ModData
     {
-        public List<string> data = new List<string>();
+        public List<string> data = new();
     }
 }

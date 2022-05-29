@@ -1,9 +1,4 @@
-﻿using StardewValley;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace RandomNPC
+﻿namespace RandomNPC
 {
     public class RNPC
     {
@@ -26,7 +21,7 @@ namespace RandomNPC
         public string[] traits;
         public string[] giftTaste;
         public string bodyType;
-        public bool visiting = false;
+        public bool visiting;
         public string[] clothes = null;
         public string[] topRandomColour = null;
         public RNPCSchedule schedule;
@@ -36,27 +31,28 @@ namespace RandomNPC
         public RNPC(string npcString, int npcID)
         {
             this.npcString = npcString;
-            string[] npca = npcString.Split('/');
-            int i = 0;
-            this.age = npca[i++];
-            this.manner = npca[i++];
-            this.anxiety = npca[i++];
-            this.optimism = npca[i++];
-            this.gender = npca[i++];
-            this.datable = npca[i++];
-            this.traits = npca[i++].Split('|');
-            this.birthday = npca[i++];
-            this.name = npca[i++];
-            this.giftTaste = npca[i++].Split('^');
-            this.bodyType = npca[i++];
-            this.skinColour = npca[i++];
-            this.hairStyle = npca[i++];
-            this.hairColour = npca[i++];
-            this.eyeColour = npca[i++];
+            var npca = npcString.Split('/');
+            var i = 0;
+            age = npca[i++];
+            manner = npca[i++];
+            anxiety = npca[i++];
+            optimism = npca[i++];
+            gender = npca[i++];
+            datable = npca[i++];
+            traits = npca[i++].Split('|');
+            birthday = npca[i++];
+            name = npca[i++];
+            giftTaste = npca[i++].Split('^');
+            bodyType = npca[i++];
+            skinColour = npca[i++];
+            hairStyle = npca[i++];
+            hairColour = npca[i++];
+            // ReSharper disable once RedundantAssignment
+            eyeColour = npca[i++];
 
             this.npcID = npcID;
-            this.nameID = "RNPC" + npcID;
-            this.startLoc = "BusStop 10000 10000";
+            nameID = $"RNPC{npcID}_{name}";
+            startLoc = "BusStop 10000 10000";
 
         }
 

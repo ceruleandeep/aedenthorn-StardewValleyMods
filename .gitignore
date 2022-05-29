@@ -338,3 +338,8 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+PersisitentGrangeDisplay/.DS_Store
+
+.DS_Store
+
+*.DotSettings
