@@ -15,5 +15,6 @@
         public int LeaveTime { get; set; } = 1800;
         public bool DestroyObjectsUnderfoot { get; set; } = false;
         public int QuestReward { get; set; } = 200;
+        public bool AntiSocial { get; set; } = true;
     }
 }

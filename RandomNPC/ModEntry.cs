@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
@@ -109,10 +109,9 @@ namespace RandomNPC
             helper.Events.GameLoop.SaveLoaded += SaveLoaded;
             helper.Events.GameLoop.OneSecondUpdateTicked += OneSecondUpdateTicked;
             helper.Events.GameLoop.UpdateTicked += UpdateTicked;
-            //helper.Events.Display.MenuChanged += MenuChanged;
             helper.Events.Input.ButtonPressed += ButtonPressed;
-            helper.Events.Content.AssetRequested += AssetRequested;
-            helper.Events.Content.AssetRequested += OtherAssetRequested;
+            helper.Events.Content.AssetRequested += DictAssetRequested;
+            helper.Events.Content.AssetRequested += TextureAssetRequested;
             if (!Config.DestroyObjectsUnderfoot)
             {
                 helper.Events.GameLoop.UpdateTicking += UpdateTicking;
@@ -331,22 +330,21 @@ namespace RandomNPC
 
                     TileSheet tilesheet = bs.map.GetTileSheet("outdoors");
                     int index = j == 8 ? 1056 : 1054;
-                    layer.Tiles[i, j] = new StaticTile(layer, tilesheet, BlendMode.Alpha, tileIndex: index);
+                    layer.Tiles[i, j] = new StaticTile(layer, tilesheet, BlendMode.Alpha, index);
                 }
             }
 
             // shuffle for visitors
             RNPCs = RNPCs.OrderBy(_ => Guid.NewGuid()).ToList();
-
             for (int i = 0; i < RNPCs.Count; i++)
             {
-                //RNPCs[i].startLoc = "BusStop " + (13 + (i % 6)) + " " + (11 + i / 6);
-                RNPCs[i].visiting = i < RNPCMaxVisitors;
+                RNPCs[i].visiting = i < MaxVisitors;
                 Helper.GameContent.InvalidateCache("Characters/schedules/" + RNPCs[i].nameID);
                 Helper.GameContent.InvalidateCache("Characters/" + RNPCs[i].nameID);
                 Helper.GameContent.InvalidateCache("Portraits/" + RNPCs[i].nameID);
             }
             Helper.GameContent.InvalidateCache("Data/NPCDispositions");
+            Helper.GameContent.InvalidateCache("Data/AntiSocialNPCs");
         }
 
         private void DayStarted(object sender, DayStartedEventArgs e)
@@ -370,7 +368,7 @@ namespace RandomNPC
         }
 
         /// <summary>Edit an asset.</summary>
-        private void AssetRequested(object sender, AssetRequestedEventArgs e)
+        private void DictAssetRequested(object sender, AssetRequestedEventArgs e)
         {
             if (e.NameWithoutLocale.IsEquivalentTo("Data/NPCDispositions"))
             {
@@ -423,6 +421,20 @@ namespace RandomNPC
                     }
                 });
             }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Data/AntiSocialNPCs"))
+            {
+                if (Config.AntiSocial)
+                {
+                    e.Edit(asset =>
+                    {
+                        var data = asset.AsDictionary<string, string>().Data;
+                        foreach (var npc in RNPCs)
+                        {
+                            data[npc.nameID] = "true";
+                        }
+                    });
+                }
+            }
         }
 
         private string MakeQuest(RNPC npc)
@@ -460,7 +472,7 @@ namespace RandomNPC
                 {
                     tastes[i] += "/" + npc.giftTaste[i];
                 }
-                potentialDialogue[j] = String.Join("/", tastes) + "/";
+                potentialDialogue[j] = string.Join("/", tastes) + "/";
             }
 
             string d = potentialDialogue[Game1.random.Next(0, potentialDialogue.Count)];
@@ -469,7 +481,7 @@ namespace RandomNPC
         }
         
         /// <summary>Load a matched asset.</summary>
-        private void OtherAssetRequested(object sender, AssetRequestedEventArgs e)
+        private void TextureAssetRequested(object sender, AssetRequestedEventArgs e)
         {
             foreach (RNPC npc in RNPCs)
             {
