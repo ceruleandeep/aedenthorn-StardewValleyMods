@@ -52,7 +52,7 @@ namespace RandomNPC
             {
                 var ConfiguredMaxVisitors = Math.Min(24, Math.Min(Config.RNPCTotal, Config.RNPCMaxVisitors));
                 if (!Context.IsWorldReady) return ConfiguredMaxVisitors;
-
+                
                 int visitorsFromModdata;
                 try
                 {
@@ -116,33 +116,48 @@ namespace RandomNPC
                 RNPCs.Add(new RNPC(npc, i));
             }
 
-            // shuffle for visitors
-            RNPCs = RNPCs.OrderBy(_ => Guid.NewGuid()).ToList();
-            for (int i = 0; i < RNPCs.Count; i++)
-            {
-                // RNPCs[i].startLoc = "BusStop " + (13 + i % 6) + " " + (11 + i / 6);
-                RNPCs[i].visiting = i < MaxVisitors;
-            }
+            // all the NPCs that will ever exist are now in RNPCs, so register with Antisocial
+            Helper.GameContent.InvalidateCache("Data/AntiSocialNPCs");
 
-            helper.Events.GameLoop.ReturnedToTitle += ReturnedToTitle;
-            helper.Events.GameLoop.DayEnding += DayEnding;
-            helper.Events.GameLoop.DayStarted += DayStarted;
-            helper.Events.GameLoop.SaveLoaded += SaveLoaded;
-            helper.Events.GameLoop.OneSecondUpdateTicked += OneSecondUpdateTicked;
-            helper.Events.GameLoop.UpdateTicked += UpdateTicked;
+            Locations("Entry - pre-shuffle");
+
+            ShuffleVisitors(null, null);
+            
+            // // shuffle for visitors
+            // RNPCs = RNPCs.OrderBy(_ => Guid.NewGuid()).ToList();
+            // for (int i = 0; i < RNPCs.Count; i++)
+            // {
+            //     // RNPCs[i].startLoc = "BusStop " + (13 + i % 6) + " " + (11 + i / 6);
+            //     RNPCs[i].visiting = i < MaxVisitors;
+            // }
+
+            helper.Events.GameLoop.ReturnedToTitle += ShuffleVisitors;
+            helper.Events.GameLoop.SaveLoaded += SaveLoaded_SetRandomQuestItems;
+            helper.Events.GameLoop.SaveLoaded += ShuffleVisitors;
+            helper.Events.GameLoop.DayEnding += DayEnding_ResetQuests;
+            helper.Events.GameLoop.DayEnding += DayEnding_ResetBus;
+            helper.Events.GameLoop.DayEnding += ShuffleVisitors;
+            helper.Events.GameLoop.DayStarted += ShuffleVisitors;
+            helper.Events.GameLoop.DayStarted += DayStarted_WarpVisitorsToBusStop;
+            helper.Events.GameLoop.OneSecondUpdateTicked += OneSecondUpdateTicked_SendVisitorsHomeAtEndOfDay;
+            helper.Events.GameLoop.UpdateTicked += UpdateTicked_DriveTheBusAway;
             helper.Events.Input.ButtonPressed += ButtonPressed;
             helper.Events.Content.AssetRequested += DictAssetRequested;
             helper.Events.Content.AssetRequested += TextureAssetRequested;
             if (!Config.DestroyObjectsUnderfoot)
             {
-                helper.Events.GameLoop.UpdateTicking += UpdateTicking;
+                helper.Events.GameLoop.UpdateTicking += UpdateTicking_WalkOverObstacles;
             }
+
+            Locations("Entry - end");
 
         }
 
-        private void SaveLoaded(object sender, SaveLoadedEventArgs e)
+        private void SaveLoaded_SetRandomQuestItems(object sender, SaveLoadedEventArgs e)
         {
-            foreach(RNPC rnpc in RNPCs)
+            Locations("SaveLoaded");
+
+            foreach (var rnpc in RNPCs)
             {
                 rnpc.questItem = GetRandomQuestItem();
             }
@@ -177,7 +192,7 @@ namespace RandomNPC
             IClickableMenu menu = Game1.activeClickableMenu;
             if (menu == null || menu.GetType() != typeof(DialogueBox))
                 return;
-            if (!(menu is DialogueBox db)) return;
+            if (menu is not DialogueBox db) return;
             int resp = db.selectedResponse;
             List<Response> resps = db.responses;
 
@@ -193,7 +208,7 @@ namespace RandomNPC
             Game1.player.addQuest(id);
         }
         
-        private void UpdateTicking(object sender, UpdateTickingEventArgs e)
+        private void UpdateTicking_WalkOverObstacles(object sender, UpdateTickingEventArgs e)
         {
             if (!Context.IsWorldReady)
                 return;
@@ -209,7 +224,7 @@ namespace RandomNPC
             }
         }
 
-        private void UpdateTicked(object sender, UpdateTickedEventArgs e)
+        private void UpdateTicked_DriveTheBusAway(object sender, UpdateTickedEventArgs e)
         {
             if (!Context.IsWorldReady) return;
             if (!drivingOff || droveOff) return;
@@ -229,9 +244,13 @@ namespace RandomNPC
             }
         }
         
-        private void OneSecondUpdateTicked(object sender, OneSecondUpdateTickedEventArgs e)
+        private void OneSecondUpdateTicked_SendVisitorsHomeAtEndOfDay(object sender, OneSecondUpdateTickedEventArgs e)
         {
+
             if (Game1.timeOfDay < Config.LeaveTime || droveOff || drivingOff) return;
+
+            Locations("SendVisitorsHomeAtEndOfDay - start");
+            
             int gone = 0;
             foreach (var npc in Game1.getLocationFromName("BusStop").characters)
             {
@@ -248,6 +267,8 @@ namespace RandomNPC
                     Game1.warpCharacter(npc, "BusStop", new Vector2(10000, 10000));
                 }
             }
+            
+            Locations("SendVisitorsHomeAtEndOfDay - end");
 
             if (drivingOff || gone != RNPCs.Count) return;
 
@@ -298,44 +319,39 @@ namespace RandomNPC
             }
         }
 
-        private void ReturnedToTitle(object sender, ReturnedToTitleEventArgs e)
+        // private void ReturnedToTitle_ShuffleVisitors(object sender, ReturnedToTitleEventArgs e)
+        // {
+        //     // shuffle for visitors
+        //
+        //     RNPCs = RNPCs.OrderBy(_ => Guid.NewGuid()).ToList();
+        //
+        //     for (int i = 0; i < RNPCs.Count; i++)
+        //     {
+        //         //RNPCs[i].startLoc = "BusStop " + (13 + (i % 6)) + " " + (11 + i / 6);
+        //         RNPCs[i].visiting = i < MaxVisitors;
+        //         Helper.GameContent.InvalidateCache("Characters/schedules/" + RNPCs[i].nameID);
+        //     }
+        //     Helper.GameContent.InvalidateCache("Data/NPCDispositions");
+        //     Helper.GameContent.InvalidateCache("Data/Quests");
+        // }
+
+        private void DayEnding_ResetQuests(object sender, DayEndingEventArgs e)
         {
-            // shuffle for visitors
-
-            RNPCs = RNPCs.OrderBy(_ => Guid.NewGuid()).ToList();
-
-            for (int i = 0; i < RNPCs.Count; i++)
-            {
-                //RNPCs[i].startLoc = "BusStop " + (13 + (i % 6)) + " " + (11 + i / 6);
-                RNPCs[i].visiting = i < MaxVisitors;
-                Helper.GameContent.InvalidateCache("Characters/schedules/" + RNPCs[i].nameID);
-            }
-            Helper.GameContent.InvalidateCache("Data/NPCDispositions");
-            Helper.GameContent.InvalidateCache("Data/Quests");
-        }
-
-        private void DayEnding(object sender, DayEndingEventArgs e)
-        {
-
-            // reset schedules
-
-            RNPCSchedules = new List<RNPCSchedule>();
-
             // reset quests and quest items
-
             Helper.GameContent.InvalidateCache("Data/Quests");
             foreach (RNPC rnpc in RNPCs)
             {
-                foreach(Quest quest in Game1.player.questLog)
+                foreach (var quest in Game1.player.questLog.Where(quest => quest.id.Value == rnpc.npcID + 4200))
                 {
-                    if(quest.id.Value == rnpc.npcID + 4200)
-                    {
-                        Game1.player.removeQuest(quest.id.Value);
-                    }
+                    Game1.player.removeQuest(quest.id.Value);
                 }
+
                 rnpc.questItem = GetRandomQuestItem();
             }
+        }
 
+        private void DayEnding_ResetBus(object sender, DayEndingEventArgs e)
+        {
             //reset bus
 
             drivingOff = false;
@@ -354,38 +370,77 @@ namespace RandomNPC
                     layer.Tiles[i, j] = new StaticTile(layer, tilesheet, BlendMode.Alpha, index);
                 }
             }
+        }
 
+        private void ShuffleVisitors(object sender, EventArgs e)
+        {
+            Locations($"ShuffleVisitors - start [{e?.ToString()?.Split(".")[^1]}]");
+
+            // reset schedules
+            RNPCSchedules = new List<RNPCSchedule>();
+            
             // shuffle for visitors
             RNPCs = RNPCs.OrderBy(_ => Guid.NewGuid()).ToList();
             for (int i = 0; i < RNPCs.Count; i++)
             {
-                RNPCs[i].visiting = i < MaxVisitors;
+                var rnpc = RNPCs[i];
+                rnpc.visiting = i < MaxVisitors;
                 Helper.GameContent.InvalidateCache("Characters/schedules/" + RNPCs[i].nameID);
                 Helper.GameContent.InvalidateCache("Characters/" + RNPCs[i].nameID);
                 Helper.GameContent.InvalidateCache("Portraits/" + RNPCs[i].nameID);
             }
             Helper.GameContent.InvalidateCache("Data/NPCDispositions");
-            Helper.GameContent.InvalidateCache("Data/AntiSocialNPCs");
+            Locations($"ShuffleVisitors - end [{e?.ToString()?.Split(".")[^1]}]");
         }
 
-        private void DayStarted(object sender, DayStartedEventArgs e)
+        private void Locations(string remarks)
         {
+            Monitor.Log($"{remarks}  {Game1.currentSeason} {Game1.dayOfMonth} {Game1.timeOfDay} {Game1.ticks}", LogLevel.Trace);
+
+            for (int i = 0; i < RNPCs.Count; i++)
+            {
+                var rnpc = RNPCs[i];
+                var npc = Game1.getCharacterFromName(rnpc.nameID);
+                var visiting = rnpc.visiting ? "visiting" : "at home";
+                Monitor.Log(
+                    npc is null
+                        ? $"    [{i}] {rnpc.nameID}: {visiting}, startloc {rnpc.startLoc}"
+                        : $"    [{i}] {rnpc.nameID}: {visiting} at {npc.currentLocation.Name} {npc.getTileX()} {npc.getTileY()}, startloc {rnpc.startLoc}",
+                    LogLevel.Trace);
+            }
+        }
+        
+        private void DayStarted_WarpVisitorsToBusStop(object sender, DayStartedEventArgs e)
+        {
+            Locations("DayStarted_WarpVisitorsToBusStop");
+
             foreach (GameLocation l in Game1.locations)
             {
                 if (l.GetType() != typeof(BusStop)) continue;
-                foreach (NPC npc in l.getCharacters())
+                foreach (var npc in l.getCharacters())
                 {
-                    foreach (var rnpc in RNPCs)
+                    foreach (var rnpc in RNPCs.Where(rnpc => rnpc.nameID == npc.Name))
                     {
-                        if (rnpc.nameID != npc.Name) continue;
                         npc.willDestroyObjectsUnderfoot = Config.DestroyObjectsUnderfoot;
-                        if (!rnpc.visiting) continue;
-                        string[] startLoc = rnpc.startLoc.Split(' ');
-                        Game1.warpCharacter(npc, "BusStop", new Vector2(int.Parse(startLoc[1]), int.Parse(startLoc[2])));
-                        l.getCharacterFromName(npc.Name).faceDirection(2);
+                        if (rnpc.visiting)
+                        {
+                            string[] startLoc = rnpc.startLoc.Split(' ');
+                            Game1.warpCharacter(npc, "BusStop",
+                                new Vector2(int.Parse(startLoc[1]), int.Parse(startLoc[2])));
+                            l.getCharacterFromName(npc.Name).faceDirection(2);
+                            Monitor.Log($"DayStarted: warped {npc.Name} to bus stop");
+                        }
+                        else
+                        {
+                            Game1.warpCharacter(npc, "BusStop", new Vector2(10000, 10000));
+                            Monitor.Log($"DayStarted: warped {npc.Name} to farm in the country");
+                        }
+                        npc.Schedule = npc.getSchedule(Game1.dayOfMonth);
                     }
                 }
             }
+            
+            Locations("DayStarted_WarpVisitorsToBusStop - end");
         }
 
         /// <summary>Edit an asset.</summary>
@@ -497,7 +552,7 @@ namespace RandomNPC
             }
 
             string d = potentialDialogue[Game1.random.Next(0, potentialDialogue.Count)];
-            Monitor.Log($"{npc.nameID} gift taste: {d}");
+            // Monitor.Log($"{npc.nameID} gift taste: {d}");
             return d;
         }
         
@@ -781,7 +836,7 @@ namespace RandomNPC
 
                 quizq = quiza.Aggregate(quizq, (current, ans) => current + "#$r 4343 " + ans);
 
-                Alert("NPC quiz: fquest_"+quizq);
+                // Alert("NPC quiz: fquest_"+quizq);
 
                 data.Add("fquest_" + (fqi), quizq);
 
@@ -842,8 +897,6 @@ namespace RandomNPC
 
             if (!npc.visiting)
             {
-                //base.Monitor.Log(npc.nameID + " at "+ npc.startLoc+" is not visiting", LogLevel.Alert);
-
                 data.Add("spring", "");
                 return data;
             }
