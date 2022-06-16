@@ -9,12 +9,13 @@
         public double NaturalHairChance { get; set; } = 0.7;
         public double LightSkinChance { get; set; } = 0.7;
         public bool DarkSkinDarkHair { get; set; } = true;
-        public int RNPCMaxVisitors { get; set; } = 5;
+        public int RNPCMaxVisitors { get; set; } = 0;
         public int RNPCTotal { get; set; } = 24;
         public bool RequireHeartsForDialogue { get; set; } = false;
         public int LeaveTime { get; set; } = 1800;
         public bool DestroyObjectsUnderfoot { get; set; } = false;
         public int QuestReward { get; set; } = 200;
         public bool AntiSocial { get; set; } = true;
+        public bool CustomNPCExclusions { get; set; } = true;
     }
 }

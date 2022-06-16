@@ -5,7 +5,6 @@ using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Locations;
 using StardewValley.Menus;
-using StardewValley.Quests;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -39,7 +38,7 @@ namespace RandomNPC
 
         private List<RNPCSchedule> RNPCSchedules = new();
 
-        internal static IManifest _manifest;
+        private static IManifest _manifest;
         
         private bool droveOff;
         private List<RNPC> RNPCs = new();
@@ -51,7 +50,7 @@ namespace RandomNPC
             get
             {
                 var ConfiguredMaxVisitors = Math.Min(24, Math.Min(Config.RNPCTotal, Config.RNPCMaxVisitors));
-                if (!Context.IsWorldReady) return ConfiguredMaxVisitors;
+                if (!Context.IsWorldReady) return ConfiguredMaxVisitors;    
                 
                 int visitorsFromModdata;
                 try
@@ -64,7 +63,7 @@ namespace RandomNPC
                     visitorsFromModdata = -1;
                 }
 
-                visitorsFromModdata = Math.Min(24, visitorsFromModdata);
+                visitorsFromModdata = Math.Min(96, visitorsFromModdata);
                 var v = visitorsFromModdata >= 0 ? visitorsFromModdata : ConfiguredMaxVisitors;
                 
                 return v;
@@ -395,7 +394,7 @@ namespace RandomNPC
 
         private void Locations(string remarks)
         {
-            Monitor.Log($"{remarks}  {Game1.currentSeason} {Game1.dayOfMonth} {Game1.timeOfDay} {Game1.ticks}", LogLevel.Trace);
+            Monitor.Log($"{remarks}  {Game1.currentSeason} {Game1.dayOfMonth} {Game1.timeOfDay} {Game1.ticks}");
 
             for (int i = 0; i < RNPCs.Count; i++)
             {
@@ -405,8 +404,7 @@ namespace RandomNPC
                 Monitor.Log(
                     npc is null
                         ? $"    [{i}] {rnpc.nameID}: {visiting}, startloc {rnpc.startLoc}"
-                        : $"    [{i}] {rnpc.nameID}: {visiting} at {npc.currentLocation.Name} {npc.getTileX()} {npc.getTileY()}, startloc {rnpc.startLoc}",
-                    LogLevel.Trace);
+                        : $"    [{i}] {rnpc.nameID}: {visiting} at {npc.currentLocation.Name} {npc.getTileX()} {npc.getTileY()}, startloc {rnpc.startLoc}");
             }
         }
         
@@ -458,18 +456,18 @@ namespace RandomNPC
                     }
                 });
             }
-            else if (e.NameWithoutLocale.IsEquivalentTo("Data/NPCGiftTastes"))
-            {
-                e.Edit(asset =>
-                {
-                    var data = asset.AsDictionary<string, string>().Data;
-
-                    foreach (var npc in RNPCs)
-                    {
-                        data[npc.nameID] = MakeGiftDialogue(npc);
-                    }
-                });
-            }
+            // else if (e.NameWithoutLocale.IsEquivalentTo("Data/NPCGiftTastes"))
+            // {
+            //     e.Edit(asset =>
+            //     {
+            //         var data = asset.AsDictionary<string, string>().Data;
+            //
+            //         foreach (var npc in RNPCs)
+            //         {
+            //             data[npc.nameID] = MakeGiftDialogue(npc);
+            //         }
+            //     });
+            // }
             else if (e.NameWithoutLocale.IsEquivalentTo("Characters/EngagementDialogue"))
             {
                 e.Edit(asset =>
@@ -507,6 +505,20 @@ namespace RandomNPC
                         foreach (var npc in RNPCs)
                         {
                             data[npc.nameID] = "true";
+                        }
+                    });
+                }
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Data/CustomNPCExclusions"))
+            {
+                if (Config.CustomNPCExclusions)
+                {
+                    e.Edit(asset =>
+                    {
+                        var data = asset.AsDictionary<string, string>().Data;
+                        foreach (var npc in RNPCs)
+                        {
+                            data[npc.nameID] = "TownEvent,TownQuest,OtherEvent";
                         }
                     });
                 }
@@ -563,27 +575,11 @@ namespace RandomNPC
             {
                 if (e.NameWithoutLocale.IsEquivalentTo("Portraits/" + npc.nameID))
                 {
-                    if (!npc.visiting)
-                    {
-                        Texture2D transparentP = Helper.ModContent.Load<Texture2D>("assets/transparent_portrait.png");
-                        e.LoadFrom(() => transparentP, AssetLoadPriority.Medium);
-                    }
-                    else
-                    {
-                        e.LoadFrom(() => CreateCustomCharacter(npc, "portrait"), AssetLoadPriority.Medium);
-                    }
+                    e.LoadFrom(() => CreateCustomCharacter(npc, "portrait"), AssetLoadPriority.Medium);
                 }
                 else if (e.NameWithoutLocale.IsEquivalentTo("Characters/" + npc.nameID))
                 {
-                    if (!npc.visiting)
-                    {
-                        Texture2D transparentC = Helper.ModContent.Load<Texture2D>("assets/transparent_character.png");
-                        e.LoadFrom(() => transparentC, AssetLoadPriority.Medium);
-                    }
-                    else
-                    {
-                        e.LoadFrom(() => CreateCustomCharacter(npc, "character"), AssetLoadPriority.Medium);
-                    }
+                    e.LoadFrom(() => CreateCustomCharacter(npc, "character"), AssetLoadPriority.Medium);
                 }
                 else if (e.NameWithoutLocale.IsEquivalentTo("Characters/schedules/" + npc.nameID))
                 {
@@ -593,7 +589,6 @@ namespace RandomNPC
                 {
                     e.LoadFrom(() => MakeDialogue(npc), AssetLoadPriority.Medium);
                 }
-
             }
         }
 
@@ -644,16 +639,13 @@ namespace RandomNPC
             questionString += "#$r 4343 0 fquest_" + (fqi) + "#" + farmerQuestions[fqi];
             if (hearts >= 4) // allow asking about plans
             {
-                string morning = "THIS IS AN ERROR";
-                string afternoon = "THIS IS AN ERROR";
-                foreach (RNPCSchedule schedule in RNPCSchedules)
+                string morning = "the village";
+                string afternoon = "the village";
+                foreach (var schedule in RNPCSchedules.Where(schedule => schedule.npc.nameID == rnpc.nameID))
                 {
-                    if (schedule.npc.nameID == rnpc.nameID)
-                    {
-                        morning = GetRandomDialogue(rnpc, RNPCdialogueData.places[schedule.morningLoc.Split(' ')[0]]);
-                        afternoon = GetRandomDialogue(rnpc, RNPCdialogueData.places[schedule.afternoonLoc.Split(' ')[0]]);
-                        break;
-                    }
+                    morning = GetRandomDialogue(rnpc, RNPCdialogueData.places[schedule.morningLoc.Split(' ')[0]]);
+                    afternoon = GetRandomDialogue(rnpc, RNPCdialogueData.places[schedule.afternoonLoc.Split(' ')[0]]);
+                    break;
                 }
                 string scheduleDialogue = GetRandomDialogue(rnpc, RNPCdialogueData.schedules);
                 data.Add("fquest_" + (fqi), scheduleDialogue.Replace("@", morning).Replace("#", afternoon));
@@ -1174,7 +1166,7 @@ namespace RandomNPC
             return sprite;
         }
 
-        private Color ColorizeGrey(string[] baseColour, Color greyMap)
+        private static Color ColorizeGrey(string[] baseColour, Color greyMap)
         {
             if (greyMap.R != greyMap.G || greyMap.R != greyMap.B || greyMap.G != greyMap.B) // not greyscale
             {
