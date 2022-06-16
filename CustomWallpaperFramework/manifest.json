@@ -1,18 +1,18 @@
 ﻿{
-  "Name": "Custom Fixed Dialogue",
+  "Name": "Custom Wallpaper Framework",
   "Author": "aedenthorn",
-  "Version": "2.1.10",
-  "Description": "Custom fixed dialogue.",
-  "UniqueID": "aedenthorn.CustomFixedDialogue",
-  "EntryDll": "CustomFixedDialogue.dll",
+  "Version": "0.1.0",
+  "Description": "Custom Wallpaper Framework.",
+  "UniqueID": "aedenthorn.CustomWallpaperFramework",
+  "EntryDll": "CustomWallpaperFramework.dll",
   "MinimumApiVersion": "3.13.0",
-  "UpdateKeys": [ "Nexus:6358" ],
   "ModUpdater": {
     "Repository": "StardewValleyMods",
     "User": "aedenthorn",
     "Directory": "_releases",
-    "ModFolder": "CustomFixedDialogue"
+    "ModFolder": "CustomWallpaperFramework"
   },
+  "UpdateKeys": [ "Nexus:12510" ],
   "Dependencies": [
     {
       "UniqueID": "Platonymous.ModUpdater",
